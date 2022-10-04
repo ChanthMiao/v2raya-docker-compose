@@ -1,0 +1,25 @@
+version: '3'
+services:
+  v2raya:
+    depends_on:
+      - mosdns
+    image: mzz2017/v2raya:1.5.9.1698.1
+    volumes:
+      - ./asset:/usr/local/share/v2ray
+      - ./config:/etc/v2raya
+    ulimits:
+      nproc: 500
+      nofile: 1000000
+    restart: unless-stopped
+    privileged: true
+    network_mode: "host"
+
+  mosdns:
+    image: irinesistiana/mosdns:v4.3.1
+    volumes:
+      - ./asset:/usr/local/share/v2ray
+      - ./mosdns:/etc/mosdns
+    ulimits:
+      nofile: 65536
+    restart: unless-stopped
+    network_mode: "host"

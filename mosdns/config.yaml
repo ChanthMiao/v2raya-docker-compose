@@ -1,0 +1,142 @@
+log:
+  level: info
+  file: ""
+
+data_providers:
+  - tag: blocked
+    file: /etc/mosdns/blocked.txt
+    auto_reload: true
+
+  - tag: local
+    file: /etc/mosdns/local.txt
+    auto_reload: true
+
+  - tag: direct
+    file: /etc/mosdns/direct.txt
+    auto_reload: true
+
+  - tag: proxy
+    file: /etc/mosdns/proxy.txt
+    auto_reload: true
+
+  - tag: geosite
+    file: /usr/local/share/v2ray/geosite.dat
+    auto_reload: true
+
+  - tag: geoip
+    file: /usr/local/share/v2ray/geoip.dat
+    auto_reload: true
+
+plugins:
+  - tag: query_is_blocked_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:blocked"
+        - "provider:geosite:category-porn"
+        - "provider:geosite:falungong"
+
+  - tag: query_is_ads_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:geosite:category-ads-all"
+
+  - tag: query_is_direct_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:direct"
+
+  - tag: query_is_proxy_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:direct"
+
+  - tag: query_is_local_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:geosite:private"
+        - "provider:local"
+
+  - tag: query_is_mainland_domain
+    type: query_matcher
+    args:
+      domain:
+        - "provider:geosite:icloud,apple-cn"
+        - "provider:geosite:google-cn,category-scholar-cn"
+        - "provider:geosite:category-games@cn"
+        - "provider:geosite:cn"
+
+  - tag: response_has_mainland_ip
+    type: response_matcher
+    args:
+      ip: "provider:geoip:cn"
+
+  - tag: forward_dnspod
+    type: "fast_forward"
+    args:
+      upstream:
+        - addr: "https://doh.pub/dns-query"
+          dial_addr: 120.53.53.53
+        - addr: "https://doh.pub/dns-query"
+          dial_addr: 1.12.12.12
+
+  - tag: forward_cloudflare
+    type: "fast_forward"
+    args:
+      upstream:
+        - addr: "https://1.1.1.1/dns-query"
+          socks5: "127.0.0.1:1080"
+
+  - tag: forward_local
+    type: "fast_forward"
+    args:
+      upstream:
+        - addr: 192.168.3.1
+
+  - tag: main_sequence
+    type: sequence
+    args:
+      exec:
+        - _default_cache
+        - _no_ecs
+        - if: query_is_ads_domain || query_is_blocked_domain
+          exec:
+            - _new_nxdomain_response
+            - _return
+        - if: query_is_local_domain
+          exec:
+            - forward_local
+            - _return
+        - if: query_is_direct_domain
+          exec:
+            - forward_dnspod
+            - _return
+        - if: query_is_proxy_domain
+          exec:
+            - forward_cloudflare
+            - _prefer_ipv4
+            - _return
+        - if: query_is_mainland_domain
+          exec:
+            - forward_dnspod
+            - _return
+        - forward_cloudflare
+        - if: response_has_mainland_ip
+          exec:
+            - forward_dnspod
+            - _return
+        - _prefer_ipv4
+
+servers:
+  - exec: main_sequence
+    listeners:
+      - protocol: udp
+        addr: "127.0.0.1:53"
+      - protocol: udp
+        addr: "192.168.3.67:53"
+api:
+  http: "127.0.0.1:2053"

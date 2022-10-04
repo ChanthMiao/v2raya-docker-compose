@@ -1,0 +1,4 @@
+asset/*.dat
+config/*db
+config/config.json
+*.swp

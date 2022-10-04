@@ -1,0 +1,6 @@
+default: proxy
+inboundTag(socks,http) && domain(geosite:category-ads-all,geosite:category-porn,geosite:falungong)->block
+inboundTag(socks,http) && domain(geosite:private,domain:uniontech.com,domain:deepin.com,domain:fastgit.org,domain:fastgit.xyz)->direct
+inboundTag(socks,http) && domain(domain:oversea.cnki.net)->proxy
+inboundTag(socks,http) && domain(geosite:icloud,geosite:apple-cn,geosite:google-cn,geosite:category-scholar-cn,geosite:category-games@cn,geosite:cn)->direct
+inboundTag(socks,http,dns) && ip(geoip:private,geoip:cn)->direct
